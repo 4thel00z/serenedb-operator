@@ -1,0 +1,19 @@
+apiVersion: database.serenedb.com/v1alpha1
+kind: SereneDB
+metadata:
+  name: serenedb-sample
+spec:
+  image:
+    tag: "26.09.2"
+  persistence:
+    size: 20Gi
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  config:
+    cpuThreads: 1
+    ioThreads: 1

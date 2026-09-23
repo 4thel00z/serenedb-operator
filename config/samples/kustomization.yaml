@@ -1,0 +1,4 @@
+resources:
+- database_v1alpha1_serenedb.yaml
+- database_v1alpha1_serenedb_tls.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
