@@ -31,3 +31,4 @@ work/
 
 # mdBook output
 docs/book/
+dist/

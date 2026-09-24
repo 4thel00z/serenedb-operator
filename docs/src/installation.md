@@ -4,6 +4,24 @@ The operator needs Kubernetes 1.27 or newer. Backups additionally need a CSI
 driver with snapshot support and the snapshot controller, see
 [Backups and restore](./guide/backups.md).
 
+## From a release
+
+Every release ships one installer manifest with the CRDs and the operator
+Deployment, pinned to that release's image on GitHub Container Registry.
+
+```sh
+kubectl apply -f https://github.com/4thel00z/serenedb-operator/releases/latest/download/install.yaml
+```
+
+To pin a version, use that release's own download path:
+
+```sh
+kubectl apply -f https://github.com/4thel00z/serenedb-operator/releases/download/v0.1.0/install.yaml
+```
+
+The images are published for `linux/amd64` and `linux/arm64` as
+`ghcr.io/4thel00z/serenedb-operator:<tag>`.
+
 ## From the repository
 
 ```sh

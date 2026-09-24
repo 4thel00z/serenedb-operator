@@ -55,9 +55,11 @@ inside that server without anyone opening a `psql` session.
 ## Install
 
 ```sh
-make install                                              # CRDs
-make deploy IMG=ghcr.io/4thel00z/serenedb-operator:latest # operator
+kubectl apply -f https://github.com/4thel00z/serenedb-operator/releases/latest/download/install.yaml
 ```
+
+That one file carries the CRDs and the operator Deployment from the latest
+release. From a clone, `make install` and `make deploy` do the same in two steps.
 
 Requires Kubernetes 1.27 or newer. Backups need a CSI driver with snapshot support.
 
