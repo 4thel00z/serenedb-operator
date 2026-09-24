@@ -29,10 +29,13 @@ import (
 	databasev1alpha1 "github.com/4thel00z/serenedb-operator/api/v1alpha1"
 )
 
-const testName = "mydb"
+const (
+	testName      = "mydb"
+	testNamespace = "team"
+)
 
 func minimal() *databasev1alpha1.SereneDB {
-	return &databasev1alpha1.SereneDB{ObjectMeta: metav1.ObjectMeta{Name: testName, Namespace: "team"}}
+	return &databasev1alpha1.SereneDB{ObjectMeta: metav1.ObjectMeta{Name: testName, Namespace: testNamespace}}
 }
 
 func full() *databasev1alpha1.SereneDB {
@@ -303,11 +306,11 @@ func TestDataClaimName(t *testing.T) {
 }
 
 func TestVolumeSnapshot(t *testing.T) {
-	b := &databasev1alpha1.Backup{ObjectMeta: metav1.ObjectMeta{Name: "b1", Namespace: "team"}}
+	b := &databasev1alpha1.Backup{ObjectMeta: metav1.ObjectMeta{Name: "b1", Namespace: testNamespace}}
 	b.Spec.Cluster.Name = "mydb"
 	b.Spec.VolumeSnapshotClassName = ptr.To("csi-fast")
 	u := VolumeSnapshot(b, "data-mydb-0")
-	if u.GetKind() != "VolumeSnapshot" || u.GetName() != "b1" || u.GetNamespace() != "team" {
+	if u.GetKind() != "VolumeSnapshot" || u.GetName() != "b1" || u.GetNamespace() != testNamespace {
 		t.Fatalf("meta %v", u.Object["metadata"])
 	}
 	spec := u.Object["spec"].(map[string]any)

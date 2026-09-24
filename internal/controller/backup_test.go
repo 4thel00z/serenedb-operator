@@ -64,7 +64,7 @@ var _ = Describe("Backup controller", func() {
 		ns := newNamespace()
 		backup := &databasev1alpha1.Backup{
 			ObjectMeta: metav1.ObjectMeta{Name: "nightly", Namespace: ns},
-			Spec:       databasev1alpha1.BackupSpec{Cluster: databasev1alpha1.ClusterRef{Name: "srv"}, VolumeSnapshotClassName: ptr.To("csi-fast")},
+			Spec:       databasev1alpha1.BackupSpec{Cluster: databasev1alpha1.ClusterRef{Name: clusterName}, VolumeSnapshotClassName: ptr.To("csi-fast")},
 		}
 		Expect(k8sClient.Create(ctx, backup)).To(Succeed())
 		Eventually(backupPhase(backup), eventuallyTimeout, pollInterval).Should(Equal(databasev1alpha1.BackupPhasePending))
@@ -94,7 +94,7 @@ var _ = Describe("Backup controller", func() {
 		readyCluster(ns)
 		backup := &databasev1alpha1.Backup{
 			ObjectMeta: metav1.ObjectMeta{Name: "broken", Namespace: ns},
-			Spec:       databasev1alpha1.BackupSpec{Cluster: databasev1alpha1.ClusterRef{Name: "srv"}},
+			Spec:       databasev1alpha1.BackupSpec{Cluster: databasev1alpha1.ClusterRef{Name: clusterName}},
 		}
 		Expect(k8sClient.Create(ctx, backup)).To(Succeed())
 		Eventually(backupPhase(backup), eventuallyTimeout, pollInterval).Should(Equal(databasev1alpha1.BackupPhaseRunning))
@@ -110,7 +110,7 @@ var _ = Describe("ScheduledBackup controller", func() {
 		schedule := &databasev1alpha1.ScheduledBackup{
 			ObjectMeta: metav1.ObjectMeta{Name: "hourly", Namespace: ns},
 			Spec: databasev1alpha1.ScheduledBackupSpec{
-				Cluster:   databasev1alpha1.ClusterRef{Name: "srv"},
+				Cluster:   databasev1alpha1.ClusterRef{Name: clusterName},
 				Schedule:  "0 * * * *",
 				Immediate: true,
 				Keep:      ptr.To[int32](1),
@@ -126,13 +126,13 @@ var _ = Describe("ScheduledBackup controller", func() {
 		first := &databasev1alpha1.Backup{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: schedule.Status.LastBackup}, first)).To(Succeed())
 		Expect(first.Labels[databasev1alpha1.ScheduledBackupLabel]).To(Equal("hourly"))
-		Expect(first.Spec.Cluster.Name).To(Equal("srv"))
+		Expect(first.Spec.Cluster.Name).To(Equal(clusterName))
 
 		By("pruning: two completed backups with keep 1 leaves the newest")
 		markBackupCompleted(first)
 		second := &databasev1alpha1.Backup{
 			ObjectMeta: metav1.ObjectMeta{Name: "hourly-manual", Namespace: ns, Labels: map[string]string{databasev1alpha1.ScheduledBackupLabel: "hourly"}},
-			Spec:       databasev1alpha1.BackupSpec{Cluster: databasev1alpha1.ClusterRef{Name: "srv"}},
+			Spec:       databasev1alpha1.BackupSpec{Cluster: databasev1alpha1.ClusterRef{Name: clusterName}},
 		}
 		Expect(k8sClient.Create(ctx, second)).To(Succeed())
 		markBackupCompleted(second)
@@ -154,7 +154,7 @@ var _ = Describe("ScheduledBackup controller", func() {
 		ns := newNamespace()
 		schedule := &databasev1alpha1.ScheduledBackup{
 			ObjectMeta: metav1.ObjectMeta{Name: "bad", Namespace: ns},
-			Spec:       databasev1alpha1.ScheduledBackupSpec{Cluster: databasev1alpha1.ClusterRef{Name: "srv"}, Schedule: "not a cron"},
+			Spec:       databasev1alpha1.ScheduledBackupSpec{Cluster: databasev1alpha1.ClusterRef{Name: clusterName}, Schedule: "not a cron"},
 		}
 		Expect(k8sClient.Create(ctx, schedule)).To(Succeed())
 		reason := readyReason(schedule, func() []metav1.Condition { return schedule.Status.Conditions })

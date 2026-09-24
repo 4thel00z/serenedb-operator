@@ -168,23 +168,25 @@ func Container(db *databasev1alpha1.SereneDB) corev1.Container {
 
 // ContainerPorts lists the container ports, pg-wire first and HTTP when enabled.
 func ContainerPorts(db *databasev1alpha1.SereneDB) []corev1.ContainerPort {
-	ports := []corev1.ContainerPort{{Name: postgresPort, ContainerPort: PostgresPort(db), Protocol: corev1.ProtocolTCP}}
-	if !db.Spec.Listeners.HTTP.Enabled {
-		return ports
+	ports := make([]corev1.ContainerPort, 0, 2)
+	ports = append(ports, corev1.ContainerPort{Name: postgresPort, ContainerPort: PostgresPort(db), Protocol: corev1.ProtocolTCP})
+	if db.Spec.Listeners.HTTP.Enabled {
+		ports = append(ports, corev1.ContainerPort{Name: httpPort, ContainerPort: HTTPPort(db), Protocol: corev1.ProtocolTCP})
 	}
-	return append(ports, corev1.ContainerPort{Name: httpPort, ContainerPort: HTTPPort(db), Protocol: corev1.ProtocolTCP})
+	return ports
 }
 
 // VolumeMounts mounts the data directory, the flagfile and optionally the TLS material.
 func VolumeMounts(db *databasev1alpha1.SereneDB) []corev1.VolumeMount {
-	mounts := []corev1.VolumeMount{
-		{Name: dataVolume, MountPath: databasev1alpha1.DefaultDataMountPath},
-		{Name: configVolume, MountPath: configMountPath, ReadOnly: true},
+	mounts := make([]corev1.VolumeMount, 0, 3)
+	mounts = append(mounts,
+		corev1.VolumeMount{Name: dataVolume, MountPath: databasev1alpha1.DefaultDataMountPath},
+		corev1.VolumeMount{Name: configVolume, MountPath: configMountPath, ReadOnly: true},
+	)
+	if db.Spec.TLS.Enabled {
+		mounts = append(mounts, corev1.VolumeMount{Name: tlsVolume, MountPath: tlsMountPath, ReadOnly: true})
 	}
-	if !db.Spec.TLS.Enabled {
-		return mounts
-	}
-	return append(mounts, corev1.VolumeMount{Name: tlsVolume, MountPath: tlsMountPath, ReadOnly: true})
+	return mounts
 }
 
 // Volumes lists the pod volumes. The data volume comes from the claim template unless an existing claim is named.

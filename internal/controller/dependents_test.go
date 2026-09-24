@@ -29,8 +29,10 @@ import (
 	"github.com/4thel00z/serenedb-operator/internal/statements"
 )
 
+const clusterName = "srv"
+
 func readyCluster(namespace string) {
-	db := newDatabase(namespace, "srv")
+	db := newDatabase(namespace, clusterName)
 	Expect(k8sClient.Create(ctx, db)).To(Succeed())
 	Eventually(func() string { return conditionReason(db, databasev1alpha1.ConditionReady) }, eventuallyTimeout, pollInterval).Should(Equal(reasonPodNotReady))
 	markStatefulSetReady(db)
@@ -60,7 +62,7 @@ var _ = Describe("Database controller", func() {
 		ns := newNamespace()
 		database := &databasev1alpha1.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: "app", Namespace: ns},
-			Spec:       databasev1alpha1.DatabaseSpec{Cluster: databasev1alpha1.ClusterRef{Name: "srv"}, ReclaimPolicy: "Delete"},
+			Spec:       databasev1alpha1.DatabaseSpec{Cluster: databasev1alpha1.ClusterRef{Name: clusterName}, ReclaimPolicy: databasev1alpha1.ReclaimDelete},
 		}
 		Expect(k8sClient.Create(ctx, database)).To(Succeed())
 		reason := readyReason(database, func() []metav1.Condition { return database.Status.Conditions })
@@ -87,7 +89,7 @@ var _ = Describe("Database controller", func() {
 		readyCluster(ns)
 		database := &databasev1alpha1.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: "kept", Namespace: ns},
-			Spec:       databasev1alpha1.DatabaseSpec{Cluster: databasev1alpha1.ClusterRef{Name: "srv"}, Name: "kept_db"},
+			Spec:       databasev1alpha1.DatabaseSpec{Cluster: databasev1alpha1.ClusterRef{Name: clusterName}, Name: "kept_db"},
 		}
 		Expect(k8sClient.Create(ctx, database)).To(Succeed())
 		reason := readyReason(database, func() []metav1.Condition { return database.Status.Conditions })
@@ -113,12 +115,12 @@ var _ = Describe("DatabaseRole controller", func() {
 		role := &databasev1alpha1.DatabaseRole{
 			ObjectMeta: metav1.ObjectMeta{Name: "app", Namespace: ns},
 			Spec: databasev1alpha1.DatabaseRoleSpec{
-				Cluster:        databasev1alpha1.ClusterRef{Name: "srv"},
+				Cluster:        databasev1alpha1.ClusterRef{Name: clusterName},
 				Login:          true,
 				CreateDB:       true,
 				PasswordSecret: &databasev1alpha1.PasswordSecretRef{Name: "app-pw"},
 				InRoles:        []string{"readers"},
-				ReclaimPolicy:  "Delete",
+				ReclaimPolicy:  databasev1alpha1.ReclaimDelete,
 			},
 		}
 		Expect(k8sClient.Create(ctx, role)).To(Succeed())
@@ -150,7 +152,7 @@ var _ = Describe("DatabaseRole controller", func() {
 		role := &databasev1alpha1.DatabaseRole{
 			ObjectMeta: metav1.ObjectMeta{Name: "waiting", Namespace: ns},
 			Spec: databasev1alpha1.DatabaseRoleSpec{
-				Cluster:        databasev1alpha1.ClusterRef{Name: "srv"},
+				Cluster:        databasev1alpha1.ClusterRef{Name: clusterName},
 				PasswordSecret: &databasev1alpha1.PasswordSecretRef{Name: "later"},
 			},
 		}
@@ -171,7 +173,7 @@ var _ = Describe("ServerSecret controller", func() {
 		secret := &databasev1alpha1.ServerSecret{
 			ObjectMeta: metav1.ObjectMeta{Name: "lake", Namespace: ns},
 			Spec: databasev1alpha1.ServerSecretSpec{
-				Cluster:    databasev1alpha1.ClusterRef{Name: "srv"},
+				Cluster:    databasev1alpha1.ClusterRef{Name: clusterName},
 				Type:       "s3",
 				Scope:      "s3://lake/",
 				Options:    map[string]string{"REGION": "eu-central-1"},
@@ -196,7 +198,7 @@ var _ = Describe("ServerSecret controller", func() {
 		secret := &databasev1alpha1.ServerSecret{
 			ObjectMeta: metav1.ObjectMeta{Name: "nocreds", Namespace: ns},
 			Spec: databasev1alpha1.ServerSecretSpec{
-				Cluster:    databasev1alpha1.ClusterRef{Name: "srv"},
+				Cluster:    databasev1alpha1.ClusterRef{Name: clusterName},
 				Type:       "gcs",
 				ValuesFrom: &corev1.LocalObjectReference{Name: "absent"},
 			},

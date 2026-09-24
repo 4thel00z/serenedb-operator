@@ -195,7 +195,7 @@ var _ = Describe("SereneDB controller", func() {
 
 	It("ties the generated Secret to the SereneDB only while the volume is deleted with it", func() {
 		db := newDatabase(newNamespace(), "own")
-		db.Spec.Persistence.RetentionPolicy.WhenDeleted = "Delete"
+		db.Spec.Persistence.RetentionPolicy.WhenDeleted = databasev1alpha1.ReclaimDelete
 		Expect(k8sClient.Create(ctx, db)).To(Succeed())
 
 		secret := &corev1.Secret{}

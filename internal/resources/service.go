@@ -64,21 +64,22 @@ func HeadlessService(db *databasev1alpha1.SereneDB) *corev1.Service {
 
 // ServicePorts lists the serving ports, pg-wire first and HTTP when enabled.
 func ServicePorts(db *databasev1alpha1.SereneDB) []corev1.ServicePort {
-	ports := []corev1.ServicePort{{
+	ports := make([]corev1.ServicePort, 0, 2)
+	ports = append(ports, corev1.ServicePort{
 		Name:       postgresPort,
 		Port:       PostgresPort(db),
 		TargetPort: intstr.FromString(postgresPort),
 		Protocol:   corev1.ProtocolTCP,
-	}}
-	if !db.Spec.Listeners.HTTP.Enabled {
-		return ports
-	}
-	return append(ports, corev1.ServicePort{
-		Name:       httpPort,
-		Port:       HTTPPort(db),
-		TargetPort: intstr.FromString(httpPort),
-		Protocol:   corev1.ProtocolTCP,
 	})
+	if db.Spec.Listeners.HTTP.Enabled {
+		ports = append(ports, corev1.ServicePort{
+			Name:       httpPort,
+			Port:       HTTPPort(db),
+			TargetPort: intstr.FromString(httpPort),
+			Protocol:   corev1.ProtocolTCP,
+		})
+	}
+	return ports
 }
 
 func serviceType(db *databasev1alpha1.SereneDB) corev1.ServiceType {
