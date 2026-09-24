@@ -1,0 +1,9 @@
+apiVersion: database.serenedb.com/v1alpha1
+kind: Backup
+metadata:
+  name: serenedb-sample-manual
+spec:
+  cluster:
+    name: serenedb-sample
+  method: volumeSnapshot
+  # volumeSnapshotClassName: csi-snapclass

@@ -99,7 +99,119 @@ spec:
 When TLS is on, the optional Elasticsearch-compatible HTTP listener (`listeners.http.enabled`)
 serves HTTPS.
 
-## Spec reference
+## Databases, roles and server secrets
+
+Three more kinds manage objects inside a running server over its pg-wire port. The operator connects
+as `postgres` with the password from the SereneDB's Secret, so nothing else needs credentials. Each
+object names its server in `spec.cluster.name`, waits until that SereneDB is `Ready`, and reports an
+`Applied` reason in its own `Ready` condition. Objects are re-applied every ten minutes and whenever
+the SereneDB or a referenced Secret changes.
+
+```yaml
+apiVersion: database.serenedb.com/v1alpha1
+kind: Database
+metadata:
+  name: app-production
+spec:
+  cluster: {name: mydb}
+  name: app_production        # defaults to the object name
+  reclaimPolicy: Retain       # Delete drops the database with the object
+---
+apiVersion: database.serenedb.com/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: app-rw
+spec:
+  cluster: {name: mydb}
+  login: true
+  createDB: true
+  passwordSecret: {name: app-rw-password, key: password}
+  inRoles: [readers]          # memberships not listed here are revoked
+  validUntil: "2030-01-01"
+  reclaimPolicy: Delete
+---
+apiVersion: database.serenedb.com/v1alpha1
+kind: ServerSecret
+metadata:
+  name: lake
+spec:
+  cluster: {name: mydb}
+  type: s3                    # azure, gcs, http, huggingface, iceberg, postgres, r2, s3
+  scope: s3://my-lake/
+  options: {REGION: eu-central-1}
+  valuesFrom: {name: lake-s3-credentials}   # every key becomes a CREATE SECRET option
+```
+
+`Database` runs `CREATE DATABASE IF NOT EXISTS`. `DatabaseRole` creates the role or alters every
+attribute on each pass, grants and revokes memberships to match `inRoles`, and re-applies the password
+only when the referenced Secret's resourceVersion changes, since the server stores only a SCRAM
+verifier. `ServerSecret` runs `CREATE OR REPLACE PERSISTENT SECRET`, which lets the server reach
+object storage, HTTP endpoints, Iceberg catalogs and remote databases for zero-ETL queries. The server
+stores persistent secrets unencrypted on the data volume. A `ServerSecret` is always dropped with its
+object; databases and roles follow `reclaimPolicy`.
+
+Every name and value from a spec is quoted before it reaches SQL. When the SereneDB is gone, deleting a
+dependent object skips the server-side drop and just completes.
+
+| Ready reason | Meaning |
+|---|---|
+| `Applied` | The object exists on the server as specified |
+| `ClusterNotFound`, `ClusterNotReady` | Waiting for the SereneDB |
+| `ConnectionFailed`, `SQLError` | The server refused the connection or the statement; retried every 30 seconds |
+| `PasswordSecretMissing`, `ValuesSecretMissing` | A referenced Kubernetes Secret or key is absent |
+| `InvalidSpec` | A value cannot be rendered into SQL |
+
+## Backups and restore
+
+`Backup` and `ScheduledBackup` snapshot the data volume through the CSI snapshot API. The operator
+runs `CHECKPOINT` on the server, creates a `VolumeSnapshot` of the data PVC, and reports
+`Completed` once the snapshot is ready to use. The cluster needs a CSI driver with snapshot support
+and the snapshot controller installed; without the `VolumeSnapshot` API a `Backup` reports `Failed`
+with that reason and everything else keeps working.
+
+```yaml
+apiVersion: database.serenedb.com/v1alpha1
+kind: ScheduledBackup
+metadata:
+  name: nightly
+spec:
+  cluster: {name: mydb}
+  schedule: "0 2 * * *"       # five-field cron, UTC
+  immediate: true             # also run once right away
+  keep: 7                     # delete older completed backups from this schedule
+  volumeSnapshotClassName: csi-snapclass
+```
+
+A one-off `Backup` takes the same `cluster`, `method` and `volumeSnapshotClassName` fields. Backups
+created by a schedule carry the label `database.serenedb.com/scheduled-backup=<name>`. Deleting a
+`Backup` deletes its `VolumeSnapshot`.
+
+To restore, create a new `SereneDB` whose data volume is seeded from the snapshot and point it at the
+original server's password Secret:
+
+```yaml
+apiVersion: database.serenedb.com/v1alpha1
+kind: SereneDB
+metadata:
+  name: mydb-restored
+spec:
+  bootstrap: {volumeSnapshotName: nightly-20260924-020000}
+  auth: {existingSecret: mydb}
+```
+
+`bootstrap` is immutable and applies only when the volume is first created. Snapshots are
+crash-consistent at the moment after `CHECKPOINT`; there is no point-in-time recovery. A logical
+export method is not offered because `EXPORT DATABASE` in SereneDB 26.09.2 stops before writing
+`schema.sql`, so its output cannot be imported.
+
+| Backup phase | Meaning |
+|---|---|
+| `Pending` | Waiting for the SereneDB to be Ready or reachable; `status.error` says why |
+| `Running` | Snapshot requested, not yet ready to use |
+| `Completed` | `status.snapshotName` is ready to use |
+| `Failed` | `status.error` holds the snapshot error or the missing-API message |
+
+## SereneDB spec reference
 
 | Field | Default | Description |
 |---|---|---|
@@ -131,6 +243,7 @@ serves HTTPS.
 | `persistence.existingClaim` | | Use a pre-created PVC instead. Immutable |
 | `persistence.retentionPolicy.whenDeleted` | `Retain` | `Retain` or `Delete`. Also decides the generated Secret's fate |
 | `persistence.retentionPolicy.whenScaled` | `Retain` | |
+| `bootstrap.volumeSnapshotName` | | Seed the data volume from a VolumeSnapshot. Immutable |
 | `resources` | `{}` | Recommended start: requests equal limits, at least 2 CPU and 4Gi |
 | `terminationGracePeriodSeconds` | `120` | Shutdown budget for checkpointing. Raise it for large data directories |
 | `service.type` | `ClusterIP` | `ClusterIP`, `NodePort` or `LoadBalancer` |
@@ -190,6 +303,9 @@ make lint
 make test-e2e      # kind cluster: deploys the operator, runs SELECT 1 against a real SereneDB
 make run           # run the operator against the current kubeconfig
 ```
+
+The kind end-to-end suite covers the SereneDB, Database, DatabaseRole and ServerSecret kinds against a
+real server. Backups are covered by envtest only, because kind ships no CSI snapshotter.
 
 `make test-e2e` builds the operator image, loads it into a kind cluster named
 `serenedb-operator-test-e2e`, creates a `SereneDB`, waits for `Ready`, runs queries through the

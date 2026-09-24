@@ -33,7 +33,12 @@ rules:
 - apiGroups:
   - database.serenedb.com
   resources:
+  - backups
+  - databaseroles
+  - databases
+  - scheduledbackups
   - serenedbs
+  - serversecrets
   verbs:
   - create
   - delete
@@ -45,13 +50,23 @@ rules:
 - apiGroups:
   - database.serenedb.com
   resources:
+  - backups/finalizers
+  - databaseroles/finalizers
+  - databases/finalizers
+  - scheduledbackups/finalizers
   - serenedbs/finalizers
+  - serversecrets/finalizers
   verbs:
   - update
 - apiGroups:
   - database.serenedb.com
   resources:
+  - backups/status
+  - databaseroles/status
+  - databases/status
+  - scheduledbackups/status
   - serenedbs/status
+  - serversecrets/status
   verbs:
   - get
   - patch
@@ -60,6 +75,18 @@ rules:
   - networking.k8s.io
   resources:
   - networkpolicies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - snapshot.storage.k8s.io
+  resources:
+  - volumesnapshots
   verbs:
   - create
   - delete

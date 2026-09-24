@@ -1,0 +1,14 @@
+# Restores a new server from a completed Backup. The password Secret of the original
+# server is reused because the restored data directory keeps the password it was
+# initialized with.
+apiVersion: database.serenedb.com/v1alpha1
+kind: SereneDB
+metadata:
+  name: serenedb-restored
+spec:
+  bootstrap:
+    volumeSnapshotName: serenedb-sample-manual
+  auth:
+    existingSecret: serenedb-sample
+  persistence:
+    size: 20Gi

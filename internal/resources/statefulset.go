@@ -73,7 +73,7 @@ func VolumeClaimTemplate(db *databasev1alpha1.SereneDB) corev1.PersistentVolumeC
 	if len(modes) == 0 {
 		modes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
 	}
-	return corev1.PersistentVolumeClaim{
+	claim := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: dataVolume},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes:      modes,
@@ -83,6 +83,15 @@ func VolumeClaimTemplate(db *databasev1alpha1.SereneDB) corev1.PersistentVolumeC
 			},
 		},
 	}
+	if db.Spec.Bootstrap == nil {
+		return claim
+	}
+	claim.Spec.DataSource = &corev1.TypedLocalObjectReference{
+		APIGroup: ptr.To(VolumeSnapshotGVK.Group),
+		Kind:     VolumeSnapshotGVK.Kind,
+		Name:     db.Spec.Bootstrap.VolumeSnapshotName,
+	}
+	return claim
 }
 
 // PodTemplate builds the database pod, hardened the same way as the upstream Helm chart.

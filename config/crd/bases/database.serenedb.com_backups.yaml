@@ -1,0 +1,108 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: backups.database.serenedb.com
+spec:
+  group: database.serenedb.com
+  names:
+    kind: Backup
+    listKind: BackupList
+    plural: backups
+    singular: backup
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.cluster.name
+      name: Cluster
+      type: string
+    - jsonPath: .spec.method
+      name: Method
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.snapshotName
+      name: Snapshot
+      priority: 1
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Backup is one backup of a SereneDB data volume.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: BackupSpec requests one backup of a SereneDB.
+            properties:
+              cluster:
+                description: Cluster is the SereneDB to back up.
+                properties:
+                  name:
+                    description: Name of the SereneDB.
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                type: object
+              method:
+                default: volumeSnapshot
+                description: Method selects how the backup is taken. volumeSnapshot
+                  runs CHECKPOINT and creates a VolumeSnapshot of the data volume.
+                enum:
+                - volumeSnapshot
+                type: string
+              volumeSnapshotClassName:
+                description: VolumeSnapshotClassName selects the VolumeSnapshotClass.
+                  Nil uses the cluster default.
+                type: string
+            required:
+            - cluster
+            type: object
+          status:
+            description: BackupStatus defines the observed state of Backup.
+            properties:
+              completedAt:
+                description: CompletedAt is when the snapshot became ready to use.
+                format: date-time
+                type: string
+              error:
+                description: Error explains a Failed phase.
+                type: string
+              phase:
+                description: Phase is Pending, Running, Completed or Failed.
+                type: string
+              snapshotName:
+                description: SnapshotName is the VolumeSnapshot holding the backup.
+                type: string
+              startedAt:
+                description: StartedAt is when the CHECKPOINT ran.
+                format: date-time
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

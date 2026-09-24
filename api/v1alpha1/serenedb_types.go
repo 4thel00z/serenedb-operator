@@ -265,8 +265,22 @@ type NetworkPolicySpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
+// BootstrapSpec seeds a new data volume from a backup. It applies only when the SereneDB is created.
+type BootstrapSpec struct {
+	// VolumeSnapshotName names a VolumeSnapshot in the same namespace, typically the status.snapshotName of a
+	// completed Backup. The data volume is created from it. Reuse the original server's password Secret through
+	// auth.existingSecret, since the restored data directory keeps the password it was initialized with.
+	// +kubebuilder:validation:MinLength=1
+	VolumeSnapshotName string `json:"volumeSnapshotName"`
+}
+
 // SereneDBSpec defines the desired state of a single-node SereneDB server.
+// +kubebuilder:validation:XValidation:rule="has(self.bootstrap) == has(oldSelf.bootstrap) && (!has(self.bootstrap) || self.bootstrap == oldSelf.bootstrap)",message="bootstrap is immutable"
 type SereneDBSpec struct {
+	// Bootstrap seeds the data volume from a backup when the SereneDB is created. Immutable.
+	// +optional
+	Bootstrap *BootstrapSpec `json:"bootstrap,omitempty"`
+
 	// Image selects the server image.
 	// +kubebuilder:default={repository: "serenedb/serenedb", tag: "26.09.2", pullPolicy: IfNotPresent}
 	// +optional

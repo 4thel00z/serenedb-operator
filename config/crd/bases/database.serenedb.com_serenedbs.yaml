@@ -984,6 +984,20 @@ spec:
                     description: PasswordKey is the Secret key holding the password.
                     type: string
                 type: object
+              bootstrap:
+                description: Bootstrap seeds the data volume from a backup when the
+                  SereneDB is created. Immutable.
+                properties:
+                  volumeSnapshotName:
+                    description: |-
+                      VolumeSnapshotName names a VolumeSnapshot in the same namespace, typically the status.snapshotName of a
+                      completed Backup. The data volume is created from it. Reuse the original server's password Secret through
+                      auth.existingSecret, since the restored data directory keeps the password it was initialized with.
+                    minLength: 1
+                    type: string
+                required:
+                - volumeSnapshotName
+                type: object
               config:
                 default:
                   authTimeout: 30s
@@ -1498,6 +1512,10 @@ spec:
                   type: object
                 type: array
             type: object
+            x-kubernetes-validations:
+            - message: bootstrap is immutable
+              rule: has(self.bootstrap) == has(oldSelf.bootstrap) && (!has(self.bootstrap)
+                || self.bootstrap == oldSelf.bootstrap)
           status:
             description: SereneDBStatus defines the observed state of SereneDB.
             properties:

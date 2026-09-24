@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-rw-password
+stringData:
+  password: change-me
+---
+apiVersion: database.serenedb.com/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: app-rw
+spec:
+  cluster:
+    name: serenedb-sample
+  name: app_rw
+  login: true
+  createDB: false
+  passwordSecret:
+    name: app-rw-password
+  inRoles: []
+  reclaimPolicy: Delete

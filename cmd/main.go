@@ -39,6 +39,7 @@ import (
 
 	databasev1alpha1 "github.com/4thel00z/serenedb-operator/api/v1alpha1"
 	"github.com/4thel00z/serenedb-operator/internal/controller"
+	"github.com/4thel00z/serenedb-operator/internal/sqlexec"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -207,6 +208,30 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SereneDB")
+		os.Exit(1)
+	}
+	databaseReconciler := (&controller.DatabaseReconciler{}).WithClient(mgr.GetClient(), sqlexec.Connect)
+	if err := databaseReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Database")
+		os.Exit(1)
+	}
+	databaseRoleReconciler := (&controller.DatabaseRoleReconciler{}).WithClient(mgr.GetClient(), sqlexec.Connect)
+	if err := databaseRoleReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "DatabaseRole")
+		os.Exit(1)
+	}
+	serverSecretReconciler := (&controller.ServerSecretReconciler{}).WithClient(mgr.GetClient(), sqlexec.Connect)
+	if err := serverSecretReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ServerSecret")
+		os.Exit(1)
+	}
+	backupReconciler := (&controller.BackupReconciler{}).WithClient(mgr.GetClient(), mgr.GetScheme(), sqlexec.Connect)
+	if err := backupReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Backup")
+		os.Exit(1)
+	}
+	if err := (&controller.ScheduledBackupReconciler{Client: mgr.GetClient()}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ScheduledBackup")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

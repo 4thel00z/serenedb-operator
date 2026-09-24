@@ -22,6 +22,21 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the serenedb-operator itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+- scheduledbackup_admin_role.yaml
+- scheduledbackup_editor_role.yaml
+- scheduledbackup_viewer_role.yaml
+- backup_admin_role.yaml
+- backup_editor_role.yaml
+- backup_viewer_role.yaml
+- serversecret_admin_role.yaml
+- serversecret_editor_role.yaml
+- serversecret_viewer_role.yaml
+- databaserole_admin_role.yaml
+- databaserole_editor_role.yaml
+- databaserole_viewer_role.yaml
+- database_admin_role.yaml
+- database_editor_role.yaml
+- database_viewer_role.yaml
 - serenedb_admin_role.yaml
 - serenedb_editor_role.yaml
 - serenedb_viewer_role.yaml

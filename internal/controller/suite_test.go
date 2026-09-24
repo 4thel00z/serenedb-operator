@@ -35,6 +35,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	databasev1alpha1 "github.com/4thel00z/serenedb-operator/api/v1alpha1"
+	"github.com/4thel00z/serenedb-operator/internal/sqlexec"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -44,6 +45,7 @@ var (
 	testEnv   *envtest.Environment
 	cfg       *rest.Config
 	k8sClient client.Client
+	fakeSQL   *sqlexec.Fake
 )
 
 func TestControllers(t *testing.T) {
@@ -62,7 +64,7 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases"), filepath.Join("..", "..", "test", "crds")},
 		ErrorIfCRDPathMissing: true,
 	}
 	if dir := firstEnvTestBinaryDir(); dir != "" {
@@ -86,6 +88,12 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	reconciler := &SereneDBReconciler{Client: mgr.GetClient(), Scheme: mgr.GetScheme()}
 	Expect(reconciler.SetupWithManager(mgr)).To(Succeed())
+	fakeSQL = sqlexec.NewFake()
+	Expect((&DatabaseReconciler{}).WithClient(mgr.GetClient(), fakeSQL.Connector()).SetupWithManager(mgr)).To(Succeed())
+	Expect((&DatabaseRoleReconciler{}).WithClient(mgr.GetClient(), fakeSQL.Connector()).SetupWithManager(mgr)).To(Succeed())
+	Expect((&ServerSecretReconciler{}).WithClient(mgr.GetClient(), fakeSQL.Connector()).SetupWithManager(mgr)).To(Succeed())
+	Expect((&BackupReconciler{}).WithClient(mgr.GetClient(), mgr.GetScheme(), fakeSQL.Connector()).SetupWithManager(mgr)).To(Succeed())
+	Expect((&ScheduledBackupReconciler{Client: mgr.GetClient()}).SetupWithManager(mgr)).To(Succeed())
 	go func() {
 		defer GinkgoRecover()
 		Expect(mgr.Start(ctx)).To(Succeed())

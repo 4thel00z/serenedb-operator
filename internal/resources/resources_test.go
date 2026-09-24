@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	databasev1alpha1 "github.com/4thel00z/serenedb-operator/api/v1alpha1"
 )
@@ -272,6 +273,50 @@ func TestStatefulSetExistingClaim(t *testing.T) {
 	vols := sts.Spec.Template.Spec.Volumes
 	if len(vols) != 2 || vols[1].Name != "data" || vols[1].PersistentVolumeClaim.ClaimName != "prewarmed" {
 		t.Fatalf("volumes %+v", vols)
+	}
+}
+
+func TestBootstrapSeedsClaimFromSnapshot(t *testing.T) {
+	db := minimal()
+	db.Spec.Bootstrap = &databasev1alpha1.BootstrapSpec{VolumeSnapshotName: "nightly-1"}
+	claim := VolumeClaimTemplate(db)
+	if claim.Spec.DataSource == nil || claim.Spec.DataSource.Kind != "VolumeSnapshot" || claim.Spec.DataSource.Name != "nightly-1" {
+		t.Fatalf("data source %+v", claim.Spec.DataSource)
+	}
+	if *claim.Spec.DataSource.APIGroup != "snapshot.storage.k8s.io" {
+		t.Fatal("api group")
+	}
+	if VolumeClaimTemplate(minimal()).Spec.DataSource != nil {
+		t.Fatal("no bootstrap means no data source")
+	}
+}
+
+func TestDataClaimName(t *testing.T) {
+	if DataClaimName(minimal()) != "data-mydb-0" {
+		t.Fatal(DataClaimName(minimal()))
+	}
+	db := minimal()
+	db.Spec.Persistence.ExistingClaim = "pre"
+	if DataClaimName(db) != "pre" {
+		t.Fatal("existing claim")
+	}
+}
+
+func TestVolumeSnapshot(t *testing.T) {
+	b := &databasev1alpha1.Backup{ObjectMeta: metav1.ObjectMeta{Name: "b1", Namespace: "team"}}
+	b.Spec.Cluster.Name = "mydb"
+	b.Spec.VolumeSnapshotClassName = ptr.To("csi-fast")
+	u := VolumeSnapshot(b, "data-mydb-0")
+	if u.GetKind() != "VolumeSnapshot" || u.GetName() != "b1" || u.GetNamespace() != "team" {
+		t.Fatalf("meta %v", u.Object["metadata"])
+	}
+	spec := u.Object["spec"].(map[string]any)
+	if spec["volumeSnapshotClassName"] != "csi-fast" || spec["source"].(map[string]any)["persistentVolumeClaimName"] != "data-mydb-0" {
+		t.Fatalf("spec %v", spec)
+	}
+	ready, failure := SnapshotOutcome(u)
+	if ready || failure != "" {
+		t.Fatal("fresh snapshot is neither ready nor failed")
 	}
 }
 

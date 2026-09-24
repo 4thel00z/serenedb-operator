@@ -1,0 +1,9 @@
+apiVersion: database.serenedb.com/v1alpha1
+kind: Database
+metadata:
+  name: app-production
+spec:
+  cluster:
+    name: serenedb-sample
+  name: app_production
+  reclaimPolicy: Retain

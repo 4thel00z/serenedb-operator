@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: ghcr.io/4thel00z/serenedb-operator
-  newTag: latest
+  newTag: e2e

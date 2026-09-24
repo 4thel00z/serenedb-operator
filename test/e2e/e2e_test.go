@@ -65,6 +65,10 @@ func applyManifest(manifest string) {
 }
 
 func queryPodManifest(name, sql string) string {
+	return queryPodManifestAs(name, "postgres", databaseName, "postgres-password", sql)
+}
+
+func queryPodManifestAs(name, user, secretName, secretKey, sql string) string {
 	return fmt.Sprintf(`apiVersion: v1
 kind: Pod
 metadata:
@@ -81,9 +85,17 @@ spec:
           valueFrom:
             secretKeyRef:
               name: %s
-              key: postgres-password
-      command: ["psql", "-h", "%s", "-p", "7890", "-U", "postgres", "-d", "postgres", "-tAc", %q]
-`, name, databaseNamespace, databaseImage, databaseName, databaseName, sql)
+              key: %s
+      command: ["psql", "-h", "%s", "-p", "7890", "-U", "%s", "-d", "postgres", "-tAc", %q]
+`, name, databaseNamespace, databaseImage, secretName, secretKey, databaseName, user, sql)
+}
+
+func waitReady(kind, name string) {
+	Eventually(func() string {
+		out, _ := kubectl("get", kind, name, "-n", databaseNamespace,
+			"-o", "jsonpath={.status.conditions[?(@.type==\"Ready\")].status}")
+		return out
+	}, 3*time.Minute, 3*time.Second).Should(Equal("True"), kind+"/"+name)
 }
 
 func runQuery(name, sql string) string {
@@ -190,6 +202,103 @@ var _ = Describe("SereneDB operator", Ordered, func() {
 		}, 6*time.Minute, 5*time.Second).Should(Equal("True"))
 
 		Expect(runQuery("query-after-roll", "SELECT v FROM e2e_marker")).To(Equal("42"))
+	})
+
+	It("manages databases, roles and server secrets through SQL", func() {
+		applyManifest(fmt.Sprintf(`apiVersion: v1
+kind: Secret
+metadata:
+  name: app-rw-password
+  namespace: %[1]s
+stringData:
+  password: app-secret-1
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lake-credentials
+  namespace: %[1]s
+stringData:
+  KEY_ID: AKIAEXAMPLE
+  SECRET: supersecret
+---
+apiVersion: database.serenedb.com/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: readers
+  namespace: %[1]s
+spec:
+  cluster: {name: %[2]s}
+---
+apiVersion: database.serenedb.com/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: app-rw
+  namespace: %[1]s
+spec:
+  cluster: {name: %[2]s}
+  name: app_rw
+  login: true
+  createDB: true
+  passwordSecret: {name: app-rw-password}
+  inRoles: [readers]
+  reclaimPolicy: Delete
+---
+apiVersion: database.serenedb.com/v1alpha1
+kind: Database
+metadata:
+  name: app-db
+  namespace: %[1]s
+spec:
+  cluster: {name: %[2]s}
+  name: app_db
+  reclaimPolicy: Delete
+---
+apiVersion: database.serenedb.com/v1alpha1
+kind: ServerSecret
+metadata:
+  name: lake
+  namespace: %[1]s
+spec:
+  cluster: {name: %[2]s}
+  type: s3
+  scope: s3://lake/
+  options: {REGION: eu-central-1}
+  valuesFrom: {name: lake-credentials}
+`, databaseNamespace, databaseName))
+		waitReady("databaserole", "readers")
+		waitReady("databaserole", "app-rw")
+		waitReady("database", "app-db")
+		waitReady("serversecret", "lake")
+
+		Expect(runQuery("q-db", "SELECT datname FROM pg_database WHERE datname = 'app_db'")).To(Equal("app_db"))
+		Expect(runQuery("q-role", "SELECT rolcanlogin, rolcreatedb FROM pg_roles WHERE rolname = 'app_rw'")).To(Equal("t|t"))
+		Expect(runQuery("q-member", "SELECT r.rolname FROM pg_auth_members am JOIN pg_roles r ON r.oid = am.roleid "+
+			"JOIN pg_roles m ON m.oid = am.member WHERE m.rolname = 'app_rw'")).To(Equal("readers"))
+		Expect(runQuery("q-secret", "SELECT type, persistent FROM sdb_secrets() WHERE name = 'lake'")).To(Equal("s3|t"))
+
+		By("connecting as the new role with the password from the Secret")
+		applyManifest(queryPodManifestAs("q-as-role", "app_rw", "app-rw-password", "password", "SELECT current_user"))
+		Eventually(func() string {
+			phase, _ := kubectl("get", "pod", "q-as-role", "-n", databaseNamespace, "-o", "jsonpath={.status.phase}")
+			return phase
+		}, 3*time.Minute, 2*time.Second).Should(Equal("Succeeded"))
+		out, err := kubectl("logs", "q-as-role", "-n", databaseNamespace)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(strings.TrimSpace(out)).To(Equal("app_rw"))
+
+		By("dropping the database, role and secret on delete")
+		_, err = kubectl("delete", "database/app-db", "serversecret/lake", "databaserole/app-rw",
+			"-n", databaseNamespace, "--wait=true", "--timeout=120s")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(runQuery("q-db-gone", "SELECT count(*) FROM pg_database WHERE datname = 'app_db'")).To(Equal("0"))
+		Expect(runQuery("q-role-gone", "SELECT count(*) FROM pg_roles WHERE rolname = 'app_rw'")).To(Equal("0"))
+		Expect(runQuery("q-secret-gone", "SELECT count(*) FROM sdb_secrets() WHERE name = 'lake'")).To(Equal("0"))
+
+		By("keeping a role whose policy is Retain")
+		_, err = kubectl("delete", "databaserole", "readers", "-n", databaseNamespace, "--wait=true", "--timeout=120s")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(runQuery("q-readers-kept", "SELECT count(*) FROM pg_roles WHERE rolname = 'readers'")).To(Equal("1"))
 	})
 
 	It("garbage collects owned objects and the data volume when the SereneDB is deleted", func() {

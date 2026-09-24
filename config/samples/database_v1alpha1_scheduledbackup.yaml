@@ -1,0 +1,11 @@
+apiVersion: database.serenedb.com/v1alpha1
+kind: ScheduledBackup
+metadata:
+  name: serenedb-sample-nightly
+spec:
+  cluster:
+    name: serenedb-sample
+  schedule: "0 2 * * *"
+  immediate: true
+  keep: 7
+  method: volumeSnapshot

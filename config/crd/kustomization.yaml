@@ -3,6 +3,11 @@
 # It should be run by config/default
 resources:
 - bases/database.serenedb.com_serenedbs.yaml
+- bases/database.serenedb.com_databases.yaml
+- bases/database.serenedb.com_databaseroles.yaml
+- bases/database.serenedb.com_serversecrets.yaml
+- bases/database.serenedb.com_backups.yaml
+- bases/database.serenedb.com_scheduledbackups.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
