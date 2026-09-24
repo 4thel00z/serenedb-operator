@@ -9,7 +9,7 @@ server's secrets manager.
 |---|---|---|
 | `cluster.name` | required | The `SereneDB` in the same namespace |
 | `name` | object name | Secret name on the server. Immutable |
-| `type` | required | `azure`, `gcs`, `http`, `huggingface`, `iceberg`, `postgres`, `r2` or `s3` |
+| `type` | required | `azure`, `gcs`, `http`, `huggingface`, `iceberg`, `openai`, `postgres`, `r2` or `s3` |
 | `scope` | unset | One path prefix the secret applies to |
 | `options` | `{}` | Non-sensitive `CREATE SECRET` options by name |
 | `valuesFrom.name` | unset | Kubernetes Secret whose every key becomes an option; wins over `options` |

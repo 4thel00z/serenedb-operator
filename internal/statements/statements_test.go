@@ -74,3 +74,14 @@ func TestSecretStatements(t *testing.T) {
 		t.Fatal("drop")
 	}
 }
+
+func TestCreateSecretOpenAI(t *testing.T) {
+	got, err := CreateSecret("embeddings", "openai", "", map[string]string{"api_key": "sk-1", "base_url": "https://emb.internal/v1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `CREATE OR REPLACE PERSISTENT SECRET "embeddings" (TYPE openai, API_KEY 'sk-1', BASE_URL 'https://emb.internal/v1')`
+	if got != want {
+		t.Fatalf("got  %s\nwant %s", got, want)
+	}
+}

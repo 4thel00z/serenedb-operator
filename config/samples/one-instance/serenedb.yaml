@@ -1,0 +1,20 @@
+apiVersion: database.serenedb.com/v1alpha1
+kind: SereneDB
+metadata:
+  name: store
+spec:
+  image:
+    tag: "26.09.2"
+  persistence:
+    size: 50Gi
+  resources:
+    requests:
+      cpu: "2"
+      memory: 4Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  config:
+    cpuThreads: 2
+    ioThreads: 2
+    maxConnections: 200

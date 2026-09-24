@@ -34,7 +34,7 @@ type ServerSecretSpec struct {
 	Name string `json:"name,omitempty"`
 
 	// Type selects the service the secret is for.
-	// +kubebuilder:validation:Enum=azure;gcs;http;huggingface;iceberg;postgres;r2;s3
+	// +kubebuilder:validation:Enum=azure;gcs;http;huggingface;iceberg;openai;postgres;r2;s3
 	Type string `json:"type"`
 
 	// Scope is a path prefix the secret applies to, for example s3://bucket/. Empty applies to every path of the type.

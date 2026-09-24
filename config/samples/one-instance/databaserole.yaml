@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-password
+stringData:
+  password: change-me
+---
+apiVersion: database.serenedb.com/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: app
+spec:
+  cluster:
+    name: store
+  name: app
+  login: true
+  passwordSecret:
+    name: app-password
+  reclaimPolicy: Delete

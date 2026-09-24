@@ -41,7 +41,7 @@ documentation on the secrets manager.
 
 ## Types and scope
 
-`type` is one of `azure`, `gcs`, `http`, `huggingface`, `iceberg`, `postgres`,
+`type` is one of `azure`, `gcs`, `http`, `huggingface`, `iceberg`, `openai`, `postgres`,
 `r2` and `s3`. `scope` is one path prefix the secret applies to; when several
 secrets of a type match a path, the server picks the longest prefix. Leave
 `scope` empty to apply to every path of the type, or create one `ServerSecret`

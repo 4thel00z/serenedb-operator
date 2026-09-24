@@ -14,6 +14,7 @@
 - [TLS and listeners](guide/tls.md)
 - [Databases and roles](guide/databases-roles.md)
 - [Server secrets](guide/server-secrets.md)
+- [One instance instead of Postgres and Qdrant](guide/one-instance.md)
 - [Backups and restore](guide/backups.md)
 - [Upgrades and configuration changes](guide/upgrades.md)
 - [Troubleshooting](guide/troubleshooting.md)

@@ -7,4 +7,5 @@ resources:
 - database_v1alpha1_backup.yaml
 - database_v1alpha1_scheduledbackup.yaml
 - database_v1alpha1_serenedb_restore.yaml
+- one-instance
 # +kubebuilder:scaffold:manifestskustomizesamples

@@ -1,0 +1,5 @@
+resources:
+- serenedb.yaml
+- database.yaml
+- databaserole.yaml
+- serversecret.yaml

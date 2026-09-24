@@ -45,6 +45,9 @@ inside that server without anyone opening a `psql` session.
 - **Snapshot backups.** `Backup` runs `CHECKPOINT` and takes a CSI volume snapshot;
   `ScheduledBackup` does it on a cron schedule with retention; `bootstrap` restores
   a new server from one.
+- **One store for tables and vectors.** The inverted index covers exact filters,
+  BM25 full text and IVF nearest-neighbour search, so one server can replace a
+  Postgres plus Qdrant pair. See [the guide](https://4thel00z.github.io/serenedb-operator/guide/one-instance.html).
 - **Nothing to lock you out.** The generated password Secret lives as long as the
   data volume, and immutable storage fields are rejected by the API server instead
   of failing at rollout.

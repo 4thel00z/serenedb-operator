@@ -1,0 +1,9 @@
+apiVersion: database.serenedb.com/v1alpha1
+kind: Database
+metadata:
+  name: app
+spec:
+  cluster:
+    name: store
+  name: app
+  reclaimPolicy: Retain
