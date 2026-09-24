@@ -28,3 +28,6 @@ go.work
 
 # local scratch output (logo studies, reports)
 work/
+
+# mdBook output
+docs/book/

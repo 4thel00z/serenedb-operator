@@ -1,0 +1,18 @@
+[book]
+title = "SereneDB Operator"
+description = "SereneDB Operator documentation: run single-node SereneDB servers on Kubernetes, manage databases, roles and server secrets declaratively, take volume snapshot backups and restore from them."
+authors = ["4thel00z"]
+language = "en"
+src = "src"
+
+[output.html]
+site-url = "/serenedb-operator/"
+default-theme = "light"
+preferred-dark-theme = "light"
+additional-css = ["theme/book.css"]
+additional-js = ["theme/book.js"]
+git-repository-url = "https://github.com/4thel00z/serenedb-operator"
+edit-url-template = "https://github.com/4thel00z/serenedb-operator/edit/main/docs/{path}"
+
+[output.html.playground]
+runnable = false
